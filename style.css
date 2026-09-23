@@ -1,0 +1,53 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  color: #ccc;
+  font-family: "Courier New", monospace;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 16px;
+  gap: 12px;
+}
+
+canvas {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 80px);
+  aspect-ratio: 672 / 768;
+  background: #000;
+  border: 2px solid #222;
+  image-rendering: pixelated;
+  outline: none;
+}
+
+canvas:focus {
+  border-color: #3a3;
+}
+
+.help {
+  margin: 0;
+  font-size: 14px;
+  text-align: center;
+}
+
+kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid #555;
+  border-radius: 3px;
+  background: #111;
+  color: #fff;
+  font-family: inherit;
+}
