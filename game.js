@@ -26,7 +26,8 @@
   const ALIEN_DROP = 18;
 
   const PLAYER_SPEED = 220;
-  const PLAYER_BULLET_SPEED = 520;
+  const PLAYER_BULLET_SPEED = 700;   // keep below 12px (bullet height) per tick so shots can't skip past shield pixels
+  const PLAYER_AUTOFIRE_INTERVAL = 0.14; // seconds between shots while fire is held
   const ALIEN_BULLET_SPEED = 230;
   const UFO_SPEED = 110;
   const EXTRA_LIFE_SCORE = 1500;
@@ -474,7 +475,8 @@
   let shotsFired = 0;
 
   let player;
-  let playerBullet;
+  let playerBullets;
+  let fireCooldown;
   let alienBullets;
   let aliens;
   let formation;
@@ -522,7 +524,8 @@
     const w = SPRITES.player.width;
     const h = SPRITES.player.height;
     player = { x: (W - w) / 2, y: GROUND_Y - h - 16, w, h };
-    playerBullet = null;
+    playerBullets = [];
+    fireCooldown = 0;
     alienBullets = [];
     alienFireTimer = 1.2;
   }
@@ -560,7 +563,7 @@
     if (invasion) lives = 1; // this death ends the game
     state = 'dying';
     stateTimer = 1.6;
-    playerBullet = null;
+    playerBullets = [];
     audio.playerHit();
   }
 
@@ -647,10 +650,13 @@
     player.x += dir * PLAYER_SPEED * dt;
     player.x = Math.max(EDGE_MARGIN, Math.min(W - EDGE_MARGIN - player.w, player.x));
 
-    // Classic rules: only one player shot on screen at a time. Holding fire
-    // re-fires as soon as the previous shot is gone.
-    if (!playerBullet && input.isDown('Space', 'ArrowUp')) {
-      playerBullet = { x: player.x + player.w / 2 - 1.5, y: player.y - 12, w: 3, h: 12 };
+    // Every tap of fire shoots immediately, and holding fire auto-fires at a
+    // steady rate. Any number of player shots can be on screen at once.
+    fireCooldown -= dt;
+    const tapped = input.wasPressed('Space', 'ArrowUp');
+    if (tapped || (fireCooldown <= 0 && input.isDown('Space', 'ArrowUp'))) {
+      playerBullets.push({ x: player.x + player.w / 2 - 1.5, y: player.y - 12, w: 3, h: 12 });
+      fireCooldown = PLAYER_AUTOFIRE_INTERVAL;
       shotsFired++;
       audio.shoot();
     }
@@ -758,22 +764,24 @@
   }
 
   function updateBullets(dt) {
-    // Player shot
-    if (playerBullet) {
-      const b = playerBullet;
+    // Player shots
+    for (let i = playerBullets.length - 1; i >= 0; i--) {
+      const b = playerBullets[i];
       b.y -= PLAYER_BULLET_SPEED * dt;
+      let remove = false;
+
       if (b.y <= HUD_TOP) {
         addEffect(SPRITES.shotBoomRed, b.x - 7, HUD_TOP, 0.25);
-        playerBullet = null;
+        remove = true;
       } else if (hitShields(b, true)) {
-        playerBullet = null;
+        remove = true;
       } else if (ufo && overlaps(b, ufo)) {
         const points = UFO_POINTS[shotsFired % UFO_POINTS.length];
         addScore(points);
         addEffect(null, ufo.x + ufo.w / 2, ufo.y + ufo.h / 2, 1.2, { text: String(points), color: COLORS.ufo });
         audio.ufoHit();
         ufo = null;
-        playerBullet = null;
+        remove = true;
       } else {
         for (const a of aliens) {
           if (!a.alive) continue;
@@ -783,11 +791,13 @@
             addScore(ALIEN_TYPES[a.type].points);
             addEffect(SPRITES.alienBoom, r.x + r.w / 2 - SPRITES.alienBoom.width / 2, r.y, 0.25);
             audio.alienHit();
-            playerBullet = null;
+            remove = true;
             break;
           }
         }
       }
+
+      if (remove) playerBullets.splice(i, 1);
     }
 
     // Alien shots
@@ -796,6 +806,7 @@
       b.y += b.vy * dt;
       b.anim += dt;
       const hitbox = { x: b.x + 2, y: b.y, w: b.w - 4, h: b.h };
+      const shotHit = playerBullets.findIndex((pb) => overlaps(hitbox, pb));
       let remove = false;
 
       if (b.y + b.h >= GROUND_Y) {
@@ -803,9 +814,9 @@
         remove = true;
       } else if (hitShields(hitbox, false)) {
         remove = true;
-      } else if (playerBullet && overlaps(hitbox, playerBullet)) {
+      } else if (shotHit !== -1) {
         addEffect(SPRITES.shotBoomWhite, b.x + b.w / 2 - 8, b.y + b.h / 2, 0.2);
-        playerBullet = null;
+        playerBullets.splice(shotHit, 1);
         remove = true;
       } else if (state === 'playing' && overlaps(hitbox, player)) {
         remove = true;
@@ -886,9 +897,9 @@
       ctx.drawImage(SPRITES.player, Math.round(player.x), player.y);
     }
 
-    if (playerBullet) {
-      ctx.fillStyle = COLORS.bullet;
-      ctx.fillRect(Math.round(playerBullet.x), Math.round(playerBullet.y), playerBullet.w, playerBullet.h);
+    ctx.fillStyle = COLORS.bullet;
+    for (const b of playerBullets) {
+      ctx.fillRect(Math.round(b.x), Math.round(b.y), b.w, b.h);
     }
 
     for (const b of alienBullets) {

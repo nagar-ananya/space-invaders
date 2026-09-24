@@ -16,7 +16,7 @@ python3 -m http.server 8000
 | Key                 | Action               |
 | ------------------- | -------------------- |
 | `←` `→` / `A` `D`   | Move                 |
-| `Space` / `↑`       | Fire (hold to keep firing) |
+| `Space` / `↑`       | Fire (every tap shoots; hold for auto-fire) |
 | `P` / `Esc`         | Pause / resume       |
 | `Enter`             | Start / restart      |
 | `M`                 | Mute sound           |
@@ -27,6 +27,7 @@ python3 -m http.server 8000
 - Four destructible shields that wear away pixel by pixel
 - Mystery UFO with the classic score table
 - Three kinds of animated alien shots; only the lowest alien in each column can fire
+- Rapid fire: each tap shoots right away, with several of your shots on screen at once
 - Your shots and alien shots cancel out when they collide
 - Extra life at 1,500 points and a new wave each level, with difficulty rising per level
 - Sound effects synthesized with WebAudio (no audio files needed)
